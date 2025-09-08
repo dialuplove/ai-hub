@@ -7,7 +7,7 @@ litellm_settings:
 # Define friendly model names your UIs will use
 model_list:
   - model_name: gemma3-4b-q4
-    litellm_params:
+      litellm_params:
       model: ollama/gemma3:4b-it-qat
       api_base: http://ollama:11434
 
