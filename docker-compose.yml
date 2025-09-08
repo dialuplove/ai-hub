@@ -1,0 +1,89 @@
+name: ai-hub
+
+networks:
+  ai-hub-net:
+    driver: bridge
+
+services:
+  # === OLLAMA (Internal Only) ===
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-ollama
+    restart: unless-stopped
+    networks: [ai-hub-net]
+    volumes:
+      - ./data/ollama:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - CUDA_VISIBLE_DEVICES=0
+    runtime: nvidia
+
+  # === vLLM ===
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: ai-vllm
+    runtime: nvidia
+    environment:
+      - CUDA_VISIBLE_DEVICES=1      # ← force the 12 GB RTX 3060
+      - CUDA_DEVICE_ORDER=PCI_BUS_ID
+    command: ["--model","/models/gemma-3-4b-it",
+              "--gpu-memory-utilization","0.80",
+              "--max-model-len","8192"]
+    volumes:
+      - /home/dialuplove/dev/ai-stack/models/gemma-3-4b-it:/models/gemma-3-4b-it:ro
+    ports: ["8000:8000"]
+    restart: unless-stopped
+
+
+  # === LiteLLM Gateway ===
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: ai-litellm
+    restart: unless-stopped
+    networks: [ai-hub-net]
+    ports: ["4000:4000"]
+    volumes:
+      - ./config/litellm.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--host", "0.0.0.0", "--port", "4000"]
+
+  # === Open WebUI ===
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: ai-openwebui
+    restart: unless-stopped
+    networks: [ai-hub-net]
+    ports: ["8080:8080"]
+    volumes:
+      - ./data/open-webui:/app/backend/data
+    environment:
+      - OPENAI_API_KEY=dev-local-key
+      - OPENAI_API_BASE_URL=http://litellm:4000/v1
+
+  # === Monitoring: Dozzle (Container Logs) ===
+  dozzle:
+    image: amir20/dozzle:latest
+    container_name: ai-dozzle
+    restart: unless-stopped
+    networks: [ai-hub-net]
+    ports: ["127.0.0.1:9999:8080"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DOZZLE_NO_ANALYTICS=true
+
+  # === Monitoring: cAdvisor (Container Metrics) ===
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: ai-cadvisor
+    restart: unless-stopped
+    networks: [ai-hub-net]
+    ports: ["127.0.0.1:9100:8080"]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg

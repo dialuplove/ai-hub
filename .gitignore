@@ -1,0 +1,45 @@
+# Node & Python caches (just in case)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+node_modules/
+
+# Docker build artifacts
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# Local environment files
+.env
+.env.*.local
+
+# Model/data caches
+data/ollama/*
+data/open-webui/*
+data/hf-cache/*
+
+# Keep placeholder files
+!data/**/.gitkeep
+
+# Database/runtime state
+data/open-webui/webui.db
+data/open-webui/vector_db/
+data/open-webui/uploads/
+
+# Keys
+id_ed25519
+id_ed25519.pub
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Git internals
+.git/
+.gitignore~
